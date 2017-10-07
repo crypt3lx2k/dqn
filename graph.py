@@ -15,8 +15,8 @@ optimizer_function = lambda lr : tf.train.RMSPropOptimizer(lr, momentum=0.95, ep
 
 def build_model (x, output_n, training=False):
     net = x
-    # net = tf.layers.batch_normalization(net, training=training, name='input/norm')
 
+    # 3 input conv layers batch_norm is experimental
     net = tf.layers.conv2d(net, 16, (9, 9), (4, 4), padding='VALID', name='conv_0')
     net = tf.layers.batch_normalization(net, training=training, name='conv_0/norm')
     net = tf.nn.relu(net, name='conv_0/relu')
@@ -29,9 +29,11 @@ def build_model (x, output_n, training=False):
     net = tf.layers.batch_normalization(net, training=training, name='conv_2/norm')
     net = tf.nn.relu(net, name='conv_2/relu')
 
+    # Flat activations
     dims = np.prod(net.shape.as_list()[1:])
     net = tf.reshape(net, [-1, dims], name='activations_flat')
 
+    # Dropout in training model, also experimental
     net = tf.layers.dropout(net, rate=0.5, training=training, name='hidden_0/dropout')
     net = tf.layers.dense(net, 512, activation=tf.nn.relu, name='hidden_0')
     net = tf.layers.dense(net, output_n, activation=None, use_bias=True, name='predictions')
@@ -39,10 +41,12 @@ def build_model (x, output_n, training=False):
     return net
 
 def build_action_value (x, a, t, action_n):
+    # Create inference model
     with tf.variable_scope('model'):
         predictions = build_model(x, action_n)
         value_estimates = tf.reduce_max(predictions,axis=-1)
 
+    # Create training model
     with tf.variable_scope('model', reuse=True):
         predictions_training = build_model(x, action_n, training=True)
 
@@ -88,6 +92,7 @@ def build_graph (observation_shape, action_shape, action_n, learning_rate):
                 name='targets'
             )
 
+            # Scale and convert image to float while on the gpu
             image = tf.image.convert_image_dtype (
                 x, tf.float32, name='observation_image'
             )
