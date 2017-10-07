@@ -34,8 +34,8 @@ def build_model (x, output_n, training=False):
     net = tf.reshape(net, [-1, dims], name='activations_flat')
 
     # Dropout in training model, also experimental
-    net = tf.layers.dropout(net, rate=0.5, training=training, name='hidden_0/dropout')
-    net = tf.layers.dense(net, 512, activation=tf.nn.relu, name='hidden_0')
+    # net = tf.layers.dropout(net, rate=0.5, training=training, name='hidden_0/dropout')
+    net = tf.layers.dense(net, 256, activation=tf.nn.relu, name='hidden_0')
     net = tf.layers.dense(net, output_n, activation=None, use_bias=True, name='predictions')
 
     return net

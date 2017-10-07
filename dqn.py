@@ -22,6 +22,8 @@ from model import DQNModel
 import replay
 import frame_processing
 
+relevant_actions = [0, 2, 3]
+
 FLAGS = None
 
 def get_epsilon_greedy_actor (model, epsilon):
@@ -32,7 +34,7 @@ def get_epsilon_greedy_actor (model, epsilon):
 
         # Random action with probability epsilon
         if draw < epsilon:
-            return environment.action_space.sample()
+            return np.random.choice(len(relevant_actions))
 
         # Otherwise we pick the action that maximizes expected return
         observation = observation.reshape((1,) + observation.shape)
@@ -101,7 +103,7 @@ def run_episode (environment, preprocessor, actor, memory=None, update=None, ren
             actions += 1
 
         # Step with action
-        frame, reward, done, info = environment.step(action)
+        frame, reward, done, info = environment.step(relevant_actions[action])
         successor = preprocessor(frame)
 
         terminal = (reward != 0.0) or done
@@ -144,7 +146,7 @@ def main (_):
     graph = build_graph (
         FLAGS.stacked_shape,
         FLAGS.action_shape,
-        environment.action_space.n,
+        len(relevant_actions),
         FLAGS.learning_rate
     )
 

@@ -32,7 +32,7 @@ def main (_):
     graph = build_graph (
         FLAGS.stacked_shape,
         FLAGS.action_shape,
-        environment.action_space.n,
+        len(dqn.relevant_actions),
         FLAGS.learning_rate
     )
 
