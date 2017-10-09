@@ -18,15 +18,15 @@ def build_model (x, output_n, training=False):
 
     # 3 input conv layers batch_norm is experimental
     net = tf.layers.conv2d(net, 16, (9, 9), (4, 4), padding='VALID', name='conv_0')
-    net = tf.layers.batch_normalization(net, training=training, name='conv_0/norm')
+    # net = tf.layers.batch_normalization(net, training=training, name='conv_0/norm')
     net = tf.nn.relu(net, name='conv_0/relu')
 
     net = tf.layers.conv2d(net, 32, (7, 7), (2, 2), padding='VALID', name='conv_1')
-    net = tf.layers.batch_normalization(net, training=training, name='conv_1/norm')
+    # net = tf.layers.batch_normalization(net, training=training, name='conv_1/norm')
     net = tf.nn.relu(net, name='conv_1/relu')
 
     net = tf.layers.conv2d(net, 64, (5, 5), (2, 2), padding='VALID', name='conv_2')
-    net = tf.layers.batch_normalization(net, training=training, name='conv_2/norm')
+    # net = tf.layers.batch_normalization(net, training=training, name='conv_2/norm')
     net = tf.nn.relu(net, name='conv_2/relu')
 
     # Flat activations
