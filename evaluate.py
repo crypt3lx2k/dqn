@@ -18,6 +18,7 @@ from config import config
 from graph import build_graph
 from model import DQNModel
 
+import agent_rl
 import dqn
 import frame_processing
 
@@ -43,13 +44,21 @@ def main (_):
         FLAGS.checkpoint_frequency
     )
 
-    greedy = dqn.get_epsilon_greedy_actor(model, epsilon=FLAGS.epsilon_greedy)
-
     stacking_preprocessor = frame_processing.StackingPreprocessor(FLAGS.stacked_shape)
+
+    # Set up evaluation agent
+    evaluation_schedule = agent_rl.ConstantSchedule(epsilon=FLAGS.epsilon_greedy)
+    evaluation_policy = agent_rl.EpsilonGreedyPolicy(model, evaluation_schedule, dqn.relevant_actions_n)
+    evaluation_update = agent_rl.DoNothingUpdate()
+
+    evaluation_agent = agent_rl.DQNAgent (
+        preprocessor=stacking_preprocessor,
+        policy=evaluation_policy, update=evaluation_update
+    )
 
     for episode in xrange(100):
         wins, losses = dqn.run_episode (
-            environment, stacking_preprocessor, greedy,
+            environment, evaluation_agent,
             render=False, delay=0.0
         )
         print('Evaluation at {}! wins={}, losses={}'.format(episode, wins, losses))
