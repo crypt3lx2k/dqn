@@ -19,66 +19,21 @@ from config import config
 from graph import build_graph
 from model import DQNModel
 
+import agent_rl
 import replay
 import frame_processing
 
 relevant_actions = [0, 2, 3]
+relevant_actions_n = len(relevant_actions)
 
 FLAGS = None
 
-def get_epsilon_greedy_actor (model, epsilon):
-    def actor (environment, observation):
-        # Returns random action with some probability epsilon otherwise
-        # act greedily with respect to the Q-values
-        draw = np.random.rand()
-
-        # Random action with probability epsilon
-        if draw < epsilon:
-            return np.random.choice(len(relevant_actions))
-
-        # Otherwise we pick the action that maximizes expected return
-        observation = observation.reshape((1,) + observation.shape)
-        predictions = model.predict(observation)
-
-        return np.argmax(predictions)
-
-    return actor
-
-def get_update (model, memory):
-    def update ():
-        # If we're below the start limit just skip this update
-        if memory.stored < FLAGS.replay_start_size:
-            return 0
-
-        # Acquire mini-batch and run value estimates
-        states, actions, rewards, successors, terminals = memory.get_batch(FLAGS.batch_size)
-        value_estimates = model.value_estimates(successors)
-
-        # Set terminal value estimates to 0
-        value_estimates[terminals] = 0.0
-
-        # TD-target
-        targets = rewards + FLAGS.gamma * value_estimates
-
-        loss, step = model.update(states, actions, targets)
-        if step % 100 == 0:
-            print('Batch {} loss={}'.format(step, loss))
-
-        return step
-
-    return update
-
-def run_episode (environment, preprocessor, actor, memory=None, update=None, render=False, delay=0.0):
+def run_episode (environment, agent, render=False, delay=0.0):
     # Set up environment
-    frame = environment.reset()
-    successor = preprocessor(frame)
+    state = environment.reset()
+    action = agent.act(state)
 
-    game_step = 0
     done = False
-    terminal = False
-
-    actions = 0
-    observation = None
 
     wins = 0
     losses = 0
@@ -87,53 +42,21 @@ def run_episode (environment, preprocessor, actor, memory=None, update=None, ren
         if render:
             environment.render()
 
-        get_action = (game_step % FLAGS.repeats_per_action) == 0
-
-        # Record memory
-        if memory is not None and (get_action or terminal) and observation is not None:
-            stored = memory.record(observation, action, reward, successor, terminal)
-
-        # Get action from actor
-        if get_action:
-            # Update observation with successor
-            observation = successor.copy()
-
-            # Acquire action
-            action = actor(environment, observation)
-            actions += 1
-
-        # Step with action
-        frame, reward, done, info = environment.step(relevant_actions[action])
-        successor = preprocessor(frame)
-
+        # Act upon environment
+        state, reward, done, info = environment.step(relevant_actions[action])
         terminal = (reward != 0.0) or done
 
-        # Overwrite successor if terminal
         if terminal:
-            preprocessor.reset()
+            wins += (reward == 1.0)
+            losses += (reward == -1.0)
 
-            wins += reward == 1.0
-            losses += reward == -1.0
+        # Get next action from agent
+        action = agent.perceive(state, action, reward, terminal)
 
-        # Do update
-        if update is not None and actions % FLAGS.actions_per_update == 0:
-            update()
-
-        if delay:
+        if render and delay:
             time.sleep(delay)
 
-        game_step += 1
-
     return wins, losses
-
-def epsilon_schedule (step):
-    if step >= FLAGS.epsilon_steps:
-        return FLAGS.epsilon_rest
-
-    b = FLAGS.epsilon_start
-    a = (FLAGS.epsilon_rest - FLAGS.epsilon_start)/FLAGS.epsilon_steps
-
-    return a * step + b
 
 def main (_):
     # Initialize all variables
@@ -146,7 +69,7 @@ def main (_):
     graph = build_graph (
         FLAGS.stacked_shape,
         FLAGS.action_shape,
-        len(relevant_actions),
+        relevant_actions_n,
         FLAGS.learning_rate
     )
 
@@ -158,35 +81,51 @@ def main (_):
     )
 
     memory = replay.Experience(FLAGS.replay_capacity, FLAGS.stacked_shape, FLAGS.action_shape)
-
-    greedy = get_epsilon_greedy_actor(model, epsilon=FLAGS.epsilon_greedy)
-    update = get_update(model, memory)
-
     stacking_preprocessor = frame_processing.StackingPreprocessor(FLAGS.stacked_shape)
 
-    for episode in xrange(1000000):
-        step = model.get_step()
+    # Set up evaluation agent
+    evaluation_schedule = agent_rl.ConstantSchedule(epsilon=FLAGS.epsilon_greedy)
+    evaluation_policy = agent_rl.EpsilonGreedyPolicy(model, evaluation_schedule, relevant_actions_n)
+    evaluation_update = agent_rl.DoNothingUpdate()
 
+    evaluation_agent = agent_rl.DQNAgent (
+        preprocessor=stacking_preprocessor,
+        policy=evaluation_policy, update=evaluation_update
+    )
+
+    # Set up learning agent
+    learning_schedule = agent_rl.LinearSchedule (
+        start=FLAGS.epsilon_start,
+        rest=FLAGS.epsilon_rest,
+        steps=FLAGS.epsilon_steps
+    )
+    learning_policy = agent_rl.EpsilonGreedyPolicy(model, learning_schedule, relevant_actions_n)
+    learning_update = agent_rl.TDZeroUpdate(model, FLAGS.batch_size, FLAGS.gamma)
+
+    learning_agent = agent_rl.DQNAgent (
+        preprocessor=stacking_preprocessor,
+        memory=memory,
+        policy=learning_policy, update=learning_update,
+        actions_per_update=FLAGS.actions_per_update,
+        replay_start_size=FLAGS.replay_start_size
+    )
+
+    # Run episodes
+    for episode in xrange(1000000):
         # Evaluate quality with a greedy policy
         if episode % 100 == 0:
             wins, losses = run_episode (
-                environment, stacking_preprocessor, greedy,
+                environment, evaluation_agent,
                 render=False, delay=0.0
             )
             print('Evaluation at {}! wins={}, losses={}'.format(episode, wins, losses))
-            # environment.render(close=True)
-
-        # Linear annealing schedule for epsilon
-        epsilon = epsilon_schedule(step)
-        actor = get_epsilon_greedy_actor(model, epsilon=epsilon)
 
         # Policy rollouts
         wins, losses = run_episode (
-            environment, stacking_preprocessor, actor,
-            memory=memory, update=update, render=False
+            environment, learning_agent, render=False
         )
 
-        print('Episode {} done! epsilon={}, wins={}, losses={}'.format(episode, epsilon, wins, losses))
+        print('Episode {} done! epsilon={}, wins={}, losses={}'.format(episode, learning_agent.policy.epsilon, wins, losses))
     environment.close()
 
     return 0
