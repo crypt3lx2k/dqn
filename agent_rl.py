@@ -36,14 +36,6 @@ class LinearSchedule (Schedule):
 class Update (object):
     pass
 
-class DoNothingUpdate (Update):
-    def __init__ (self, *args, **kwargs):
-        self.loss = 0.0
-        self.step = 0
-
-    def __call__ (self, *args, **kwargs):
-        return (self.loss, self.step) 
-
 class TDZeroUpdate (Update):
     def __init__ (self, model, batch_size, gamma):
         self.model = model
@@ -137,18 +129,14 @@ class DQNAgent (Agent):
         return action
 
     def perceive (self, state, action, reward, terminal):
-        # Default action value only returned if we're in a terminal state
-        action = 0
-
         # Store copy of variables overwritten by self.act
         original_state = self.state.copy()
         original_action = action
 
-        # Get new action if we're not terminal
         if terminal:
             self.preprocessor.reset()
-        else:
-            action = self.act(state)
+
+        action = self.act(state)
 
         # Record observation
         if self.memory is not None:

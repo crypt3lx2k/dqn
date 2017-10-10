@@ -11,7 +11,8 @@ import tensorflow as tf
 
 from config import AttrDict
 
-optimizer_function = lambda lr : tf.train.RMSPropOptimizer(lr, momentum=0.95, epsilon=0.01, centered=True)
+# optimizer_function = lambda lr : tf.train.RMSPropOptimizer(lr, momentum=0.95, epsilon=0.01, centered=True)
+optimizer_function = tf.train.AdamOptimizer
 
 def build_model (x, output_n, training=False):
     net = x

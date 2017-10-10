@@ -86,11 +86,10 @@ def main (_):
     # Set up evaluation agent
     evaluation_schedule = agent_rl.ConstantSchedule(epsilon=FLAGS.epsilon_greedy)
     evaluation_policy = agent_rl.EpsilonGreedyPolicy(model, evaluation_schedule, relevant_actions_n)
-    evaluation_update = agent_rl.DoNothingUpdate()
 
     evaluation_agent = agent_rl.DQNAgent (
         preprocessor=stacking_preprocessor,
-        policy=evaluation_policy, update=evaluation_update
+        policy=evaluation_policy
     )
 
     # Set up learning agent

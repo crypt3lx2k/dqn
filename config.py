@@ -24,10 +24,10 @@ config = AttrDict ({
     'epsilon_steps' : 100000,
     'epsilon_greedy' : 0.00,
 
-    'replay_capacity' : 10000,
-    'replay_start_size' : 1000,
+    'replay_capacity' : 50000,
+    'replay_start_size' : 5000,
 
-    'target_update_frequency' : 1000,
+    'target_update_frequency' : 128,
 
     'checkpoint_frequency' : 10000,
     'checkpoint_path' : '/tmp/atari/pong',
@@ -36,7 +36,7 @@ config = AttrDict ({
     'frame_width' : 84,
     'frame_channels' : 4,
 
-    'learning_rate' : 0.00023
+    'learning_rate' : 1e-4
 })
 
 config.frame_shape = (config.frame_height, config.frame_width)
