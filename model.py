@@ -65,10 +65,10 @@ class DQNModel (Model):
         self.last_checkpoint_step = step
 
     def update (self, states, actions, targets):
-        loss, step, _ = self.session.run (
+        step, loss, _ = self.session.run (
             [
-                self.graph.action_value.loss,
                 self.graph.global_step,
+                self.graph.action_value.loss,
                 self.graph.train
             ],
             feed_dict = {
@@ -84,7 +84,7 @@ class DQNModel (Model):
         if step >= (self.last_checkpoint_step + self.checkpoint_frequency):
             self.save_checkpoint(step)
 
-        return loss, step
+        return step, loss
 
     def get_step (self):
         return self.session.run(self.graph.global_step)

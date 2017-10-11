@@ -54,8 +54,8 @@ class TDZeroUpdate (Update):
         targets = rewards + self.gamma * value_estimates
 
         # Perform update
-        loss, step = self.model.update(states, actions, targets)
-        return loss, step
+        step, loss = self.model.update(states, actions, targets)
+        return step, loss, targets
 
 class Policy (object):
     pass
@@ -146,10 +146,17 @@ class DQNAgent (Agent):
             if ((self.memory.stored >= self.replay_start_size) and
                 (self.counter % self.actions_per_update == 0)):
 
-                loss, step = self.update(self.memory)
+                step, loss, targets = self.update(self.memory)
                 epsilon = self.policy.update(step)
 
+                targets_mean = targets.mean()
+                targets_std = targets.std()
+
                 if step % 100 == 0:
-                    print('Batch {} loss={}'.format(step, loss))
+                    print (
+                        'Batch {}, loss={}, mean={}, std={}'.format (
+                            step, loss, targets_mean, targets_std
+                        )
+                    )
 
         return action
