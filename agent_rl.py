@@ -154,7 +154,7 @@ class DQNAgent (Agent):
 
                 if step % 100 == 0:
                     print (
-                        'Batch {}, loss={}, mean={}, std={}'.format (
+                        'Batch {}, loss={:.4f}, mean={:.4f}, std={:.4f}'.format (
                             step, loss, targets_mean, targets_std
                         )
                     )
