@@ -9,6 +9,8 @@ from six.moves import xrange
 import numpy as np
 import tensorflow as tf
 
+from graph import build_graph
+
 class Model (object):
     pass
 
@@ -39,7 +41,7 @@ class DQNModel (Model):
     def predict (self, observation):
         return self.session.run (
             self.graph.action_value.predictions,
-            feed_dict = { self.graph.x : observation }
+            feed_dict = {self.graph.x : observation}
         )
 
     def value_estimates (self, observations):

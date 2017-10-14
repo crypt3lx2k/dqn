@@ -6,28 +6,49 @@ from __future__ import print_function
 
 from six.moves import xrange
 
+import argparse
 import os
 import sys
 
 import gym
 
 import numpy as np
+import tensorflow as tf
+
+import matplotlib.pyplot as plt
 
 from config import config
 from config import get_FLAGS
 from graph import build_graph
 from model import DQNModel
 
-import agent_rl
 import dqn
-import frame_processing
 
 FLAGS = None
 
+def visualize_filter (x):
+    # HWCN -> CNHW
+    x = np.transpose(x, [2, 3, 0, 1])
+
+    # Normalize to [0, 1]
+    x_min = x.min()
+    x_max = x.max()
+
+    x = (x-x_min)/(x_max-x_min)
+
+    # Pad in between filter images
+    m, n, h, w = x.shape
+
+    x = np.pad(x, ((0, 0), (0, 0), (1, 1), (1, 1)), mode='constant')
+
+    x = np.transpose(x, [0, 2, 1, 3])
+    x = np.reshape(x, [(h+2)*m, (w+2)*n])
+
+    # Show images to screen
+    plt.imshow(x,cmap='hot')
+
 def main (_):
     # Initialize all variables
-    environment = gym.make(FLAGS.environment)
-
     if not os.path.exists(FLAGS.checkpoint_path):
         print('No model at {}'.format(FLAGS.checkpoint_path), file=sys.stderr)
         return 1
@@ -46,25 +67,17 @@ def main (_):
         FLAGS.checkpoint_frequency
     )
 
-    stacking_preprocessor = frame_processing.StackingPreprocessor(FLAGS.stacked_shape)
+    # Get all weights of action value network
+    tvars = graph.graph.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'action_value')
 
-    # Set up evaluation agent
-    evaluation_schedule = agent_rl.ConstantSchedule(epsilon=FLAGS.epsilon_greedy)
-    evaluation_policy = agent_rl.EpsilonGreedyPolicy(model, evaluation_schedule, dqn.relevant_actions_n)
+    # Extract only the convolutional filters
+    filters = filter(lambda v : 'conv' in v.name and 'kernel' in v.name, tvars)
+    filters = model.session.run(filters)
+    filters_n = len(filters)
 
-    evaluation_agent = agent_rl.DQNAgent (
-        preprocessor=stacking_preprocessor,
-        policy=evaluation_policy
-    )
-
-    for episode in xrange(100):
-        wins, losses = dqn.run_episode (
-            environment, evaluation_agent,
-            render=FLAGS.render, delay=FLAGS.delay
-        )
-        print('Evaluation at {}! wins={}, losses={}'.format(episode, wins, losses))
-
-    environment.close()
+    for i, x in enumerate(filters):
+        visualize_filter(x)
+        plt.show()
 
     return 0
 
