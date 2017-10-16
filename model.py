@@ -9,8 +9,6 @@ from six.moves import xrange
 import numpy as np
 import tensorflow as tf
 
-from graph import build_graph
-
 class Model (object):
     pass
 
