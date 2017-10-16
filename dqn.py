@@ -16,12 +16,19 @@ import numpy as np
 
 from config import config
 from config import get_FLAGS
+
+from preprocessing import StackingPreprocessor
+
+from memory import Experience
 from graph import build_graph
 from model import DQNModel
 
-import agent_rl
-import replay
-import frame_processing
+from agent import ConstantSchedule
+from agent import LinearSchedule
+
+from agent import TDZeroUpdate
+from agent import EpsilonGreedyPolicy
+from agent import DQNAgent
 
 relevant_actions = [0, 2, 3]
 relevant_actions_n = len(relevant_actions)
@@ -80,28 +87,28 @@ def main (_):
         FLAGS.checkpoint_frequency
     )
 
-    memory = replay.Experience(FLAGS.replay_capacity, FLAGS.stacked_shape, FLAGS.action_shape)
-    stacking_preprocessor = frame_processing.StackingPreprocessor(FLAGS.stacked_shape)
+    memory = Experience(FLAGS.replay_capacity, FLAGS.stacked_shape, FLAGS.action_shape)
+    stacking_preprocessor = StackingPreprocessor(FLAGS.stacked_shape)
 
     # Set up evaluation agent
-    evaluation_schedule = agent_rl.ConstantSchedule(epsilon=FLAGS.epsilon_greedy)
-    evaluation_policy = agent_rl.EpsilonGreedyPolicy(model, evaluation_schedule, relevant_actions_n)
+    evaluation_schedule = ConstantSchedule(epsilon=FLAGS.epsilon_greedy)
+    evaluation_policy = EpsilonGreedyPolicy(model, evaluation_schedule, relevant_actions_n)
 
-    evaluation_agent = agent_rl.DQNAgent (
+    evaluation_agent = DQNAgent (
         preprocessor=stacking_preprocessor,
         policy=evaluation_policy
     )
 
     # Set up learning agent
-    learning_schedule = agent_rl.LinearSchedule (
+    learning_schedule = LinearSchedule (
         start=FLAGS.epsilon_start,
         rest=FLAGS.epsilon_rest,
         steps=FLAGS.epsilon_steps
     )
-    learning_policy = agent_rl.EpsilonGreedyPolicy(model, learning_schedule, relevant_actions_n)
-    learning_update = agent_rl.TDZeroUpdate(model, FLAGS.batch_size, FLAGS.gamma)
+    learning_policy = EpsilonGreedyPolicy(model, learning_schedule, relevant_actions_n)
+    learning_update = TDZeroUpdate(model, FLAGS.batch_size, FLAGS.gamma)
 
-    learning_agent = agent_rl.DQNAgent (
+    learning_agent = DQNAgent (
         preprocessor=stacking_preprocessor,
         memory=memory,
         policy=learning_policy, update=learning_update,
@@ -124,7 +131,11 @@ def main (_):
             environment, learning_agent
         )
 
-        print('Episode {} done! epsilon={}, wins={}, losses={}'.format(episode, learning_agent.policy.epsilon, wins, losses))
+        print (
+            'Episode {} done! epsilon={}, wins={}, losses={}'.format (
+                episode, learning_agent.policy.epsilon, wins, losses
+            )
+        )
     environment.close()
 
     return 0

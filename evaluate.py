@@ -15,12 +15,21 @@ import numpy as np
 
 from config import config
 from config import get_FLAGS
+
+from preprocessing import StackingPreprocessor
+
+from memory import Experience
 from graph import build_graph
 from model import DQNModel
 
-import agent_rl
+from agent import ConstantSchedule
+from agent import LinearSchedule
+
+from agent import TDZeroUpdate
+from agent import EpsilonGreedyPolicy
+from agent import DQNAgent
+
 import dqn
-import frame_processing
 
 FLAGS = None
 
@@ -46,13 +55,13 @@ def main (_):
         FLAGS.checkpoint_frequency
     )
 
-    stacking_preprocessor = frame_processing.StackingPreprocessor(FLAGS.stacked_shape)
+    stacking_preprocessor = StackingPreprocessor(FLAGS.stacked_shape)
 
     # Set up evaluation agent
-    evaluation_schedule = agent_rl.ConstantSchedule(epsilon=FLAGS.epsilon_greedy)
-    evaluation_policy = agent_rl.EpsilonGreedyPolicy(model, evaluation_schedule, dqn.relevant_actions_n)
+    evaluation_schedule = ConstantSchedule(epsilon=FLAGS.epsilon_greedy)
+    evaluation_policy = EpsilonGreedyPolicy(model, evaluation_schedule, dqn.relevant_actions_n)
 
-    evaluation_agent = agent_rl.DQNAgent (
+    evaluation_agent = DQNAgent (
         preprocessor=stacking_preprocessor,
         policy=evaluation_policy
     )
