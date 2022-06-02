@@ -8,7 +8,7 @@ decorator==4.1.2
 funcsigs==1.0.2
 functools32==3.2.3.post2
 gym==0.9.3
-html5lib==0.9999999
+html5lib==0.99999999
 idna==2.6
 Markdown==2.6.9
 matplotlib==2.0.2
